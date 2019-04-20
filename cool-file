@@ -1,0 +1,58 @@
+'use strict';
+
+var mongoose = require('mongoose');
+var dns = require('dns');
+var urlExists = require('url-exists-deep');
+
+var ShortSchema = new mongoose.Schema({
+  url: String,
+  short: Number
+});
+var Short = mongoose.model('Short', ShortSchema);
+
+const re = new RegExp(/^https{0,1}:\/\/(www.){0,1}/);
+
+
+const create = function(req, res, done){
+  
+  let url = req.body.url.replace(re, "");
+  
+  urlExists("http://" + url).then((response) => {
+    Short.findOne({url: url}, (err, data) => {
+      if (err) return done(err);
+      if (data){
+        res.json({original_url: data.url, short_url: data.short});
+      }
+      else{
+        Short.findOne().sort({short: 'desc'}).limit(1).exec((err, data) => {
+          if (err) return done(err);
+          const n = (data) ? data.short+1 : 1;
+          const s = new Short({url: url, short: n});
+          s.save((err, data) => {
+            if (err) return done(err);
+            done(null, data);
+          });
+          res.json({original_url: url, short_url: n});
+        });
+      }
+    });
+  }).catch(err => res.json({error: "invalid URL"}));  
+}
+
+
+const redirect = function(req, res, done) {
+  Short.findOne({short: req.params.num}, (err, data) => {
+    if (err) return done(err);
+    if(data){
+      res.redirect("http://" + data.url);
+    }
+    else{
+      res.send("Does not exist");
+    }
+    done(null, data);
+  });
+}
+
+
+module.exports.create = create;
+module.exports.redirect = redirect;
