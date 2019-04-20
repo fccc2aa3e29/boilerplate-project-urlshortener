@@ -12,12 +12,18 @@ var app = express();
 var port = process.env.PORT || 3000;
 
 /** this project needs a db !! **/ 
-// mongoose.connect(process.env.MONGOLAB_URI);
+mongoose.connect(process.env.MONGO_URI, {useNewUrlParser: true});
 
 app.use(cors());
 
 /** this project needs to parse POST bodies **/
 // you should mount the body-parser here
+var bodyParser = require("body-parser");
+app.use(bodyParser.urlencoded({extended: false}));
+
+var cool = require('./cool-file.js');
+
+app.post("/api/shorturl/new", cool.create);
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
@@ -25,6 +31,7 @@ app.get('/', function(req, res){
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
+app.get("/api/shorturl/:num", cool.redirect);
   
 // your first API endpoint... 
 app.get("/api/hello", function (req, res) {
